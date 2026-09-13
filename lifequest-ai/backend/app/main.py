@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from app.core.database import db_instance, init_indexes
 from app.api import auth, quests, character, shop, boss, analytics, ai
 
 app = FastAPI(
@@ -8,6 +9,13 @@ app = FastAPI(
     description="LIFEQUEST AI — AI-powered real-life RPG backend",
     version="1.0.0",
 )
+
+@app.on_event("startup")
+def startup_event():
+    try:
+        init_indexes(db_instance)
+    except Exception:
+        pass
 
 app.add_middleware(
     CORSMiddleware,

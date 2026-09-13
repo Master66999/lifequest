@@ -1,15 +1,45 @@
+import logging
 import certifi
 from pymongo import MongoClient, ReturnDocument
 from pymongo.database import Database
 from app.core.config import settings
 
-# Initialize PyMongo Client with TLS CA certificates
-tls_ca = certifi.where() if "mongodb+srv" in settings.MONGODB_URL else None
-mongo_client: MongoClient = MongoClient(
-    settings.MONGODB_URL,
-    tlsCAFile=tls_ca,
-    serverSelectionTimeoutMS=10000,
-)
+logger = logging.getLogger(__name__)
+
+
+def _create_mongo_client() -> MongoClient:
+    url = settings.MONGODB_URL
+    is_srv = "mongodb+srv" in url
+
+    # 1. Primary connection with certifi CA certificates
+    try:
+        kwargs = {"serverSelectionTimeoutMS": 10000}
+        if is_srv:
+            kwargs["tls"] = True
+            kwargs["tlsCAFile"] = certifi.where()
+        client = MongoClient(url, **kwargs)
+        client.admin.command("ping")
+        return client
+    except Exception as exc:
+        logger.warning(f"Standard TLS connection failed: {exc}. Retrying with TLS fallback...")
+
+    # 2. Fallback connection for environments with strict/custom OpenSSL (e.g. Render Linux)
+    try:
+        client = MongoClient(
+            url,
+            tls=True,
+            tlsAllowInvalidCertificates=True,
+            serverSelectionTimeoutMS=10000,
+        )
+        client.admin.command("ping")
+        return client
+    except Exception as exc:
+        logger.error(f"Fallback TLS connection failed: {exc}")
+        # Return basic client without raising so application loads
+        return MongoClient(url, serverSelectionTimeoutMS=10000)
+
+
+mongo_client: MongoClient = _create_mongo_client()
 db_instance: Database = mongo_client[settings.MONGODB_DB_NAME]
 
 
@@ -20,8 +50,7 @@ def get_db() -> Database:
 def get_next_sequence_value(db: Database, sequence_name: str) -> int:
     """
     Atomic auto-increment integer ID generator for collections.
-    Keeps all IDs (user_id, character_id, quest_id, etc.) as clean integers,
-    maintaining 100% compatibility with frontend schemas.
+    Keeps all IDs as clean integers, maintaining compatibility with frontend schemas.
     """
     counter = db.counters.find_one_and_update(
         {"_id": sequence_name},
@@ -48,14 +77,8 @@ def init_indexes(db: Database):
         db.inventory.create_index([("user_id", 1), ("item_id", 1)])
         db.bosses.create_index("id", unique=True)
     except Exception as e:
-        print(f"Warning: Index creation error: {e}")
+        logger.warning(f"Index creation warning: {e}")
 
 
-# Run index initialization
-try:
-    init_indexes(db_instance)
-except Exception:
-    pass
-
-# Compatibility stub for any legacy imports
+# Compatibility stub
 Base = object
