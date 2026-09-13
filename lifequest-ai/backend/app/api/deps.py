@@ -1,14 +1,22 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
-from sqlalchemy.orm import Session
+from pymongo.database import Database
 from app.core.config import settings
 from app.core.database import get_db
-from app.models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
+
+class CurrentUser:
+    def __init__(self, doc: dict):
+        self.id = doc.get("id")
+        self.email = doc.get("email")
+        self.hashed_password = doc.get("hashed_password")
+        self.created_at = doc.get("created_at")
+
+
+def get_current_user(db: Database = Depends(get_db), token: str = Depends(oauth2_scheme)) -> CurrentUser:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -21,7 +29,8 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    user = db.query(User).filter(User.id == int(user_id)).first()
-    if user is None:
+
+    user_doc = db.users.find_one({"id": int(user_id)})
+    if user_doc is None:
         raise credentials_exception
-    return user
+    return CurrentUser(user_doc)
