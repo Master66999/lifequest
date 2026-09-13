@@ -132,9 +132,9 @@ export default function CampaignPage() {
       <Navbar character={character} />
 
       {/* ── CENTERED MASTER CONTAINER ── */}
-      <main className="flex-1 app-container py-6 sm:py-8">
+      <main className="flex-1 app-container py-4 sm:py-8 pb-24 md:pb-8">
         {/* Header Card */}
-        <div className="card p-5 sm:p-6 mb-6 bg-white border border-slate-300 shadow-sm">
+        <div className="card p-4 sm:p-6 mb-5 sm:mb-6 bg-white border border-slate-300 shadow-sm">
           <div className="flex items-center gap-1.5 text-xs text-blue-700 font-mono font-extrabold mb-1">
             <Compass size={14} />
             <span>AURA PROCEDURAL ENGINE</span>
@@ -149,10 +149,10 @@ export default function CampaignPage() {
         </div>
 
         {/* 12-Column Centered Studio Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
           {/* ════════ LEFT COLUMN (5 cols): Goal Form Card ════════ */}
           <div className="lg:col-span-5 space-y-4">
-            <div className="card p-5 bg-white border border-slate-300">
+            <div className="card p-4 sm:p-5 bg-white border border-slate-300">
               <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800 mb-4 pb-2.5 border-b border-slate-200">
                 Define Objective
               </h3>
@@ -177,13 +177,13 @@ export default function CampaignPage() {
                   <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
                     Quick Suggestions
                   </span>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex sm:flex-wrap overflow-x-auto sm:overflow-x-visible no-scrollbar gap-1.5 pb-1 -mx-1 px-1">
                     {SUGGESTIONS.map((suggestion) => (
                       <button
                         key={suggestion}
                         type="button"
                         onClick={() => setGoal(suggestion)}
-                        className="text-left text-[11px] px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 hover:text-blue-700 hover:border-blue-300 transition-all font-medium"
+                        className="text-left text-[11px] whitespace-nowrap sm:whitespace-normal px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 hover:text-blue-700 hover:border-blue-300 transition-all font-medium shrink-0 sm:shrink"
                       >
                         {suggestion}
                       </button>
@@ -336,7 +336,7 @@ export default function CampaignPage() {
                           const key = `${cIdx}-${qIdx}`;
                           const isAdded = !!addedQuests[key];
                           return (
-                            <div key={qIdx} className="py-2.5 flex items-center justify-between gap-3 text-xs">
+                            <div key={qIdx} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 text-xs">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-0.5">
                                   <span className="badge badge-cyan text-[9px]">
@@ -353,14 +353,14 @@ export default function CampaignPage() {
                                 )}
                               </div>
 
-                              <div className="flex items-center gap-2.5 font-mono shrink-0">
+                              <div className="flex items-center justify-between sm:justify-end gap-2.5 font-mono shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-50">
                                 <span className="text-blue-800 text-xs font-bold">
                                   +{quest.xp_reward} XP
                                 </span>
                                 <button
                                   onClick={() => handleAddQuestToLog(quest, key)}
                                   disabled={isAdded}
-                                  className={`px-2 py-1 rounded-md text-xs font-bold transition-all ${
+                                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
                                     isAdded
                                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                       : 'btn btn-secondary btn-sm'

@@ -79,35 +79,53 @@ export default function Navbar({ character }: NavbarProps) {
           </div>
 
           {/* Player Stats & Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {character && (
-              <div className="hidden sm:flex items-center gap-2">
-                {/* Level Pill */}
-                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-100/80 border border-slate-300 text-xs">
-                  <span className="text-[10px] font-mono font-bold text-slate-700">LVL</span>
-                  <span className="font-mono font-extrabold text-blue-700">{character.level}</span>
-                  <div className="w-14 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-600 rounded-full transition-all"
-                      style={{ width: `${character.progress_pct}%` }}
-                    />
+              <>
+                {/* Mobile Compact Stats Badge (< 640px) */}
+                <div className="flex sm:hidden items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 text-[11px] font-mono">
+                  <span className="font-extrabold text-blue-700">L{character.level}</span>
+                  <span className="text-slate-300">·</span>
+                  <span className="text-amber-700 font-bold flex items-center gap-0.5">
+                    <Coins size={11} className="text-amber-600" />
+                    {character.gold >= 1000 ? `${(character.gold / 1000).toFixed(1)}k` : character.gold}
+                  </span>
+                  <span className="text-slate-300">·</span>
+                  <span className="text-orange-600 font-bold flex items-center gap-0.5">
+                    <Flame size={11} className="text-orange-500" />
+                    {character.streak_days}d
+                  </span>
+                </div>
+
+                {/* Desktop Full Stats (> 640px) */}
+                <div className="hidden sm:flex items-center gap-2">
+                  {/* Level Pill */}
+                  <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-100/80 border border-slate-300 text-xs">
+                    <span className="text-[10px] font-mono font-bold text-slate-700">LVL</span>
+                    <span className="font-mono font-extrabold text-blue-700">{character.level}</span>
+                    <div className="w-14 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-600 rounded-full transition-all"
+                        style={{ width: `${character.progress_pct}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Gold Pill */}
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-300 text-xs font-mono">
+                    <Coins size={13} className="text-amber-700" />
+                    <span className="font-extrabold text-amber-900">{character.gold.toLocaleString()}</span>
+                    <span className="text-[10px] text-amber-800 font-bold">G</span>
+                  </div>
+
+                  {/* Streak Pill */}
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 border border-orange-300 text-xs font-mono">
+                    <Flame size={13} className="text-orange-600" />
+                    <span className="font-extrabold text-orange-900">{character.streak_days}</span>
+                    <span className="text-[10px] text-orange-800 font-bold">d</span>
                   </div>
                 </div>
-
-                {/* Gold Pill */}
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-300 text-xs font-mono">
-                  <Coins size={13} className="text-amber-700" />
-                  <span className="font-extrabold text-amber-900">{character.gold.toLocaleString()}</span>
-                  <span className="text-[10px] text-amber-800 font-bold">G</span>
-                </div>
-
-                {/* Streak Pill */}
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 border border-orange-300 text-xs font-mono">
-                  <Flame size={13} className="text-orange-600" />
-                  <span className="font-extrabold text-orange-900">{character.streak_days}</span>
-                  <span className="text-[10px] text-orange-800 font-bold">d</span>
-                </div>
-              </div>
+              </>
             )}
 
             {/* Logout */}
@@ -119,51 +137,37 @@ export default function Navbar({ character }: NavbarProps) {
             >
               <LogOut size={16} />
             </button>
-
-            {/* Mobile Menu Toggle */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-slate-600 hover:text-slate-900 rounded-lg"
-              aria-label="Toggle Navigation"
-            >
-              {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Menu Dropdown */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-b border-slate-200 bg-white px-4 py-3 space-y-2 shadow-md">
-          {character && (
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 text-xs font-mono">
-              <span className="text-slate-600">Level {character.level}</span>
-              <span className="text-amber-700 font-bold">🪙 {character.gold} G</span>
-              <span className="text-orange-600 font-bold">🔥 {character.streak_days}d streak</span>
-            </div>
-          )}
-          <div className="space-y-1">
-            {navLinks.map((link) => {
-              const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  {link.icon}
-                  {link.label}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* ── Persistent Bottom Navigation Bar on Mobile (< 768px) ── */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] px-2 py-1 flex items-center justify-around">
+        {navLinks.map((link) => {
+          const isActive = pathname === link.href;
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`flex flex-col items-center justify-center gap-0.5 py-1 px-2 rounded-xl transition-all min-w-[62px] ${
+                isActive
+                  ? 'text-blue-700 font-extrabold'
+                  : 'text-slate-500 hover:text-slate-800 font-medium'
+              }`}
+            >
+              <div
+                className={`p-1.5 rounded-lg transition-all ${
+                  isActive ? 'bg-blue-50 text-blue-700 scale-105 shadow-2xs' : 'text-slate-500'
+                }`}
+              >
+                {link.icon}
+              </div>
+              <span className="text-[10px] tracking-tight">{link.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
     </header>
   );
 }
+

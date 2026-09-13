@@ -94,9 +94,9 @@ export default function ShopPage() {
       <Navbar character={character} />
 
       {/* ── CENTERED MASTER CONTAINER ── */}
-      <main className="flex-1 app-container py-6 sm:py-8">
+      <main className="flex-1 app-container py-4 sm:py-8 pb-24 md:pb-8">
         {/* Header Card */}
-        <div className="card p-5 sm:p-6 mb-6 bg-white border border-slate-300 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="card p-4 sm:p-6 mb-5 sm:mb-6 bg-white border border-slate-300 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
             <div className="flex items-center gap-1.5 text-xs text-amber-800 font-mono font-extrabold mb-1">
               <ShoppingBag size={14} />
@@ -151,7 +151,7 @@ export default function ShopPage() {
         <div className="flex items-center gap-2 mb-5">
           <button
             onClick={() => setActiveTab('shop')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            className={`flex-1 sm:flex-initial text-center px-4 py-2 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'shop'
                 ? 'bg-white text-blue-700 shadow-xs border border-slate-300'
                 : 'text-slate-600 hover:text-[#090d16]'
@@ -161,7 +161,7 @@ export default function ShopPage() {
           </button>
           <button
             onClick={() => setActiveTab('inventory')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            className={`flex-1 sm:flex-initial text-center px-4 py-2 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'inventory'
                 ? 'bg-white text-blue-700 shadow-xs border border-slate-300'
                 : 'text-slate-600 hover:text-[#090d16]'

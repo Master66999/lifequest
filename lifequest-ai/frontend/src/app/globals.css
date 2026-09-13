@@ -99,6 +99,16 @@ body {
   background: #94a3b8;
 }
 
+/* ── Mobile Scrollbar Hide Utility ── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+
 /* ── Centered Card Formats with Crisp Borders ── */
 .card, .glass-card {
   background: #ffffff;

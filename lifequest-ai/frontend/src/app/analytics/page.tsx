@@ -82,9 +82,9 @@ export default function AnalyticsPage() {
     <div className="min-h-screen bg-[#f1f5f9] text-[#090d16] flex flex-col">
       <Navbar character={character} />
 
-      <main className="flex-1 app-container py-6 sm:py-8">
+      <main className="flex-1 app-container py-4 sm:py-8 pb-24 md:pb-8">
         {/* Header Card */}
-        <div className="card p-5 sm:p-6 mb-6 bg-white border border-slate-300 shadow-sm">
+        <div className="card p-4 sm:p-6 mb-5 sm:mb-6 bg-white border border-slate-300 shadow-sm">
           <div className="flex items-center gap-1.5 text-xs text-blue-700 font-mono font-extrabold mb-1">
             <BarChart2 size={14} />
             <span>EXECUTIVE METRICS & TELEMETRY</span>
@@ -97,70 +97,70 @@ export default function AnalyticsPage() {
           </p>
         </div>
 
-        {/* 4 Stat Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 font-mono">
-          <div className="card p-4 sm:p-5 bg-white border border-slate-300 shadow-xs">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="font-sans font-bold text-slate-800">Total Experience</span>
-              <Zap size={16} className="text-blue-700" />
+        {/* 4 Stat Cards: 2x2 on mobile, 4 in a row on desktop */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6 font-mono">
+          <div className="card p-3.5 sm:p-5 bg-white border border-slate-300 shadow-xs">
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <span className="font-sans font-bold text-slate-800 text-[11px] sm:text-xs">Total XP</span>
+              <Zap size={15} className="text-blue-700" />
             </div>
-            <div className="text-2xl font-extrabold text-[#090d16]">
+            <div className="text-xl sm:text-2xl font-extrabold text-[#090d16]">
               {analytics.total_xp.toLocaleString()}
             </div>
-            <span className="text-[11px] text-slate-700 font-bold font-sans mt-0.5 block">Lifetime points</span>
+            <span className="text-[10px] sm:text-[11px] text-slate-600 font-bold font-sans mt-0.5 block">Lifetime points</span>
           </div>
 
-          <div className="card p-4 sm:p-5 bg-white border border-slate-300 shadow-xs">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="font-sans font-bold text-slate-800">Quests Cleared</span>
-              <CheckCircle2 size={16} className="text-emerald-700" />
+          <div className="card p-3.5 sm:p-5 bg-white border border-slate-300 shadow-xs">
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <span className="font-sans font-bold text-slate-800 text-[11px] sm:text-xs">Completed</span>
+              <CheckCircle2 size={15} className="text-emerald-700" />
             </div>
-            <div className="text-2xl font-extrabold text-[#090d16]">
+            <div className="text-xl sm:text-2xl font-extrabold text-[#090d16]">
               {analytics.quests_completed}
             </div>
-            <span className="text-[11px] text-slate-700 font-bold font-sans mt-0.5 block">Completed</span>
+            <span className="text-[10px] sm:text-[11px] text-slate-600 font-bold font-sans mt-0.5 block">Quests cleared</span>
           </div>
 
-          <div className="card p-4 sm:p-5 bg-white border border-slate-300 shadow-xs">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="font-sans font-bold text-slate-800">Consistency Streak</span>
-              <Flame size={16} className="text-orange-600" />
+          <div className="card p-3.5 sm:p-5 bg-white border border-slate-300 shadow-xs">
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <span className="font-sans font-bold text-slate-800 text-[11px] sm:text-xs">Streak</span>
+              <Flame size={15} className="text-orange-600" />
             </div>
-            <div className="text-2xl font-extrabold text-orange-800">
-              {analytics.streak_days || 17} <span className="text-sm text-slate-700 font-bold font-sans">days</span>
+            <div className="text-xl sm:text-2xl font-extrabold text-orange-800">
+              {analytics.streak_days || 17} <span className="text-xs text-slate-700 font-bold font-sans">days</span>
             </div>
-            <span className="text-[11px] text-slate-700 font-bold font-sans mt-0.5 block">Active daily run</span>
+            <span className="text-[10px] sm:text-[11px] text-slate-600 font-bold font-sans mt-0.5 block">Daily consistency</span>
           </div>
 
-          <div className="card p-4 sm:p-5 bg-white border border-slate-300 shadow-xs">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="font-sans font-bold text-slate-800">Character Rank</span>
-              <Award size={16} className="text-purple-700" />
+          <div className="card p-3.5 sm:p-5 bg-white border border-slate-300 shadow-xs">
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <span className="font-sans font-bold text-slate-800 text-[11px] sm:text-xs">Rank</span>
+              <Award size={15} className="text-purple-700" />
             </div>
-            <div className="text-2xl font-extrabold text-blue-700">
-              Level {analytics.level ?? 1}
+            <div className="text-xl sm:text-2xl font-extrabold text-blue-700">
+              Lvl {analytics.level ?? 1}
             </div>
-            <span className="text-[11px] text-slate-700 font-bold font-sans mt-0.5 block">
-              {character?.progress_pct ?? 25}% to Level {(analytics.level ?? 1) + 1}
+            <span className="text-[10px] sm:text-[11px] text-slate-600 font-bold font-sans mt-0.5 block truncate">
+              {character?.progress_pct ?? 25}% to L{(analytics.level ?? 1) + 1}
             </span>
           </div>
         </div>
 
         {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
           {/* XP Velocity Timeline (7 cols) */}
-          <div className="lg:col-span-7 card p-5 sm:p-6 bg-white border border-slate-300 shadow-xs">
+          <div className="lg:col-span-7 card p-4 sm:p-6 bg-white border border-slate-300 shadow-xs">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-200">
               <div>
                 <h3 className="font-extrabold text-sm text-[#090d16]">XP Acquisition Velocity</h3>
                 <p className="text-xs text-slate-700 font-medium">Cumulative points over time</p>
               </div>
-              <span className="text-[10px] font-mono font-extrabold text-blue-800 px-2 py-1 rounded bg-blue-50 border border-blue-200">
-                7-DAY WINDOW
+              <span className="text-[10px] font-mono font-extrabold text-blue-800 px-2 py-0.5 rounded bg-blue-50 border border-blue-200">
+                7-DAY
               </span>
             </div>
 
-            <div className="h-64 w-full">
+            <div className="h-56 sm:h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={timelineData}>
                   <defs>
