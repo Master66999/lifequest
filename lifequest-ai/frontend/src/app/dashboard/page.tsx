@@ -419,10 +419,19 @@ export default function DashboardPage() {
     try {
       const res = await auraService.chat(textToSend);
       setChatHistory((prev) => [...prev, { sender: 'aura', text: res.message }]);
-    } catch {
+    } catch (err: unknown) {
+      const errorDetail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      const isConnectionDown =
+        !(err as { response?: unknown })?.response ||
+        (err as { message?: string })?.message?.includes('Network Error');
+
+      const fallbackText = isConnectionDown
+        ? 'AURA Connection Error: Backend server is unreachable. Please ensure the FastAPI backend server is running on http://localhost:8000 ("uvicorn app.main:app --port 8000").'
+        : errorDetail || 'AURA network connection recalibrating. Please ask again.';
+
       setChatHistory((prev) => [
         ...prev,
-        { sender: 'aura', text: 'AURA network connection recalibrating. Please ask again.' },
+        { sender: 'aura', text: fallbackText },
       ]);
     } finally {
       setAuraLoading(false);

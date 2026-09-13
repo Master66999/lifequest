@@ -50,7 +50,6 @@ async def generate_campaign(
     character = db.characters.find_one({"user_id": current_user.id})
     user_level = character.get("level", 1) if character else 1
 
-    ai = get_ai_provider()
     user_prompt = build_quest_generation_prompt(
         goal=request.goal,
         timeframe=request.timeframe,
@@ -58,6 +57,7 @@ async def generate_campaign(
     )
 
     try:
+        ai = get_ai_provider()
         raw_response = await ai.generate(
             system_prompt=QUEST_GENERATION_SYSTEM,
             user_prompt=user_prompt,
@@ -140,9 +140,22 @@ async def aura_game_master(
     total = len(all_quests)
     completion_rate = (len(completed) / total * 100) if total > 0 else 0.0
 
+    def _sort_key(q):
+        val = q.get("completed_at") or q.get("created_at")
+        if isinstance(val, datetime):
+            return val.timestamp()
+        if isinstance(val, (int, float)):
+            return float(val)
+        if isinstance(val, str):
+            try:
+                return datetime.fromisoformat(val.replace("Z", "+00:00")).timestamp()
+            except Exception:
+                return 0.0
+        return 0.0
+
     recent = sorted(
-        [q for q in all_quests if q.get("created_at")],
-        key=lambda x: x.get("completed_at") or x.get("created_at") or 0,
+        [q for q in all_quests if q.get("created_at") or q.get("completed_at")],
+        key=_sort_key,
         reverse=True,
     )[:10]
 
@@ -185,21 +198,29 @@ async def aura_game_master(
         xp_to_next=max(0, xp_to_next),
     )
 
-    ai = get_ai_provider()
     try:
+        ai = get_ai_provider()
         aura_response = await ai.generate(
             system_prompt=AURA_SYSTEM_PROMPT,
             user_prompt=context_prompt,
         )
+        final_message = aura_response.strip()
     except Exception as exc:
-        logger.error(f"AURA game-master failed: {exc}")
-        raise HTTPException(
-            status_code=503,
-            detail="AURA is temporarily meditating. Please try again shortly.",
+        logger.warning(f"AURA game-master LLM call failed ({exc}), activating tactical fallback.")
+        top_attribute = max(attributes_dict.items(), key=lambda item: item[1])[0] if attributes_dict else "discipline"
+        pending_titles = [q.get("title") for q in recent if str(q.get("status")).upper() in ("AVAILABLE", "IN_PROGRESS")]
+        target_quest = f'"{pending_titles[0]}"' if pending_titles else "a newly forged mission"
+        
+        final_message = (
+            f"Greetings, noble Champion! While the celestial ether recalibrates, my tactical awareness of your journey remains sharp. "
+            f"You stand at Level {character.get('level', 1)} with a {character.get('streak_days', 0)}-day streak, "
+            f"merely {max(0, xp_to_next):,} XP from your next level breakthrough. "
+            f"Your greatest attribute resonance is currently {top_attribute.title()} ({attributes_dict.get(top_attribute, 10)} pts). "
+            f"To maximize your momentum today, channel your focus toward completing {target_quest}. Stay resolute, Warrior!"
         )
 
     return AuraResponse(
-        message=aura_response.strip(),
+        message=final_message,
         suggested_action=f"Complete a quest to continue your {character.get('streak_days', 0)}-day streak!",
     )
 
