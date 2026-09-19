@@ -33,12 +33,23 @@ export interface Character {
   xp_in_current_level: number;
   xp_needed_for_next: number;
   progress_pct: number;
+  character_class?: string;
+  equipped?: { weapon?: number | null; armor?: number | null; relic?: number | null };
+  unlocked_achievements?: string[];
+  active_perks?: string[];
   attributes: Attributes | null;
 }
 
 export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD' | 'EPIC' | 'LEGENDARY';
 export type QuestStatus = 'AVAILABLE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'ARCHIVED';
 export type AttributeKey = 'INTELLECT' | 'STRENGTH' | 'FOCUS' | 'WISDOM' | 'CREATIVITY' | 'SOCIAL' | 'DISCIPLINE';
+
+export interface Subtask {
+  id: string;
+  title: string;
+  estimated_minutes?: number;
+  completed: boolean;
+}
 
 export interface Quest {
   id: number;
@@ -55,7 +66,9 @@ export interface Quest {
   due_date: string | null;
   created_at: string | null;
   completed_at: string | null;
+  subtasks?: Subtask[];
 }
+
 
 export interface QuestCreate {
   title: string;
@@ -67,6 +80,16 @@ export interface QuestCreate {
   gold_reward: number;
   attribute?: string;
   due_date?: string | null;
+}
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  category: string;
+  is_unlocked: boolean;
+  unlocked_at?: string | null;
 }
 
 export interface QuestCompletionResult {
@@ -87,6 +110,13 @@ export interface QuestCompletionResult {
   new_gold: number;
   attribute: string | null;
   attribute_bonus: number;
+  newly_unlocked_achievements?: Achievement[];
+  perk_bonuses?: {
+    xp_multiplier?: number;
+    gold_multiplier?: number;
+    boss_damage?: number;
+    active_perk_labels?: string[];
+  } | null;
 }
 
 export interface Item {
@@ -97,6 +127,9 @@ export interface Item {
   price: number;
   effect: string;
   icon: string;
+  slot?: 'WEAPON' | 'ARMOR' | 'RELIC' | 'CONSUMABLE';
+  perk_type?: string | null;
+  perk_value?: number | null;
 }
 
 export interface InventoryItem {
@@ -104,7 +137,30 @@ export interface InventoryItem {
   item_id: number;
   quantity: number;
   item: Item;
+  is_equipped?: boolean;
+  equipped_slot?: string | null;
 }
+
+export interface ClassInfo {
+  id: string;
+  name: string;
+  title: string;
+  icon: string;
+  description: string;
+  favored_attributes: string[];
+  attribute_multiplier: number;
+  boss_damage_multiplier: number;
+  xp_multiplier: number;
+  gold_multiplier: number;
+}
+
+export interface EquipResponse {
+  success: boolean;
+  message: string;
+  equipped: { weapon?: number | null; armor?: number | null; relic?: number | null };
+  active_perks: string[];
+}
+
 
 export interface Boss {
   id: number;
@@ -168,3 +224,26 @@ export interface AuraTip {
   streak: number;
   level: number;
 }
+
+export interface DeconstructQuestResponse {
+  quest_id: number;
+  subtasks: Subtask[];
+  message: string;
+}
+
+export interface RecoveryQuestItem {
+  title: string;
+  description: string;
+  difficulty: Difficulty;
+  estimated_minutes: number;
+  xp_reward: number;
+  gold_reward: number;
+  attribute: string;
+}
+
+export interface RecoveryCoachResponse {
+  analysis: string;
+  tactical_mindset: string;
+  recovery_quests: RecoveryQuestItem[];
+}
+

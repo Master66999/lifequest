@@ -1,7 +1,18 @@
 from pydantic import BaseModel, field_validator
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from app.models.quest import DifficultyEnum, QuestStatusEnum
+
+
+class SubtaskItem(BaseModel):
+    id: str
+    title: str
+    completed: bool = False
+    estimated_minutes: Optional[int] = 10
+
+
+class ToggleSubtaskRequest(BaseModel):
+    completed: Optional[bool] = None
 
 
 class QuestCreate(BaseModel):
@@ -34,6 +45,7 @@ class QuestUpdate(BaseModel):
     attribute: Optional[str] = None
     status: Optional[QuestStatusEnum] = None
     due_date: Optional[datetime] = None
+    subtasks: Optional[List[Dict[str, Any]]] = None
 
 
 class QuestResponse(BaseModel):
@@ -51,6 +63,8 @@ class QuestResponse(BaseModel):
     due_date: Optional[datetime]
     created_at: Optional[datetime]
     completed_at: Optional[datetime]
+    subtasks: List[Dict[str, Any]] = []
 
     class Config:
         from_attributes = True
+

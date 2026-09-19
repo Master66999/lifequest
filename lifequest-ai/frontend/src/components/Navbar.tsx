@@ -15,8 +15,11 @@ import {
   Sparkles,
   Menu,
   X,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { soundEffects } from '@/lib/sound-effects';
 
 interface NavbarProps {
   character?: Character | null;
@@ -26,6 +29,25 @@ export default function Navbar({ character }: NavbarProps) {
   const pathname = usePathname();
   const { logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+
+  useEffect(() => {
+    setIsMuted(soundEffects.isMuted());
+    const handler = (e: Event) => {
+      const customEvent = e as CustomEvent<{ muted: boolean }>;
+      setIsMuted(customEvent.detail.muted);
+    };
+    window.addEventListener('lifequest-sfx-toggled', handler);
+    return () => window.removeEventListener('lifequest-sfx-toggled', handler);
+  }, []);
+
+  const handleToggleSound = () => {
+    const newMuteState = soundEffects.toggleMute();
+    setIsMuted(newMuteState);
+    if (!newMuteState) {
+      soundEffects.playClick();
+    }
+  };
 
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard', icon: <Shield size={14} /> },
@@ -127,6 +149,20 @@ export default function Navbar({ character }: NavbarProps) {
                 </div>
               </>
             )}
+
+            {/* Sound Effects Toggle */}
+            <button
+              onClick={handleToggleSound}
+              title={isMuted ? 'Unmute Game SFX' : 'Mute Game SFX'}
+              className={`p-2 rounded-lg transition-all ${
+                isMuted
+                  ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                  : 'text-blue-700 hover:bg-blue-50'
+              }`}
+              aria-label={isMuted ? 'Unmute Sound' : 'Mute Sound'}
+            >
+              {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+            </button>
 
             {/* Logout */}
             <button

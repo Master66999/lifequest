@@ -98,3 +98,43 @@ class CampaignResponse(BaseModel):
     chapters: List[GeneratedChapterSchema]
     quests_created: int
     message: str
+
+
+# ── Phase 2: AURA Deconstruction & Recovery Schemas ──────────────────────────
+
+class DeconstructQuestRequest(BaseModel):
+    quest_id: int
+
+
+class DeconstructedSubtask(BaseModel):
+    id: str
+    title: str
+    estimated_minutes: int = 10
+    completed: bool = False
+
+
+class DeconstructQuestResponse(BaseModel):
+    quest_id: int
+    subtasks: List[DeconstructedSubtask]
+    message: str
+
+
+class RecoveryQuestItem(BaseModel):
+    title: str
+    description: str
+    difficulty: str = "EASY"
+    estimated_minutes: int = 10
+    xp_reward: int = 80
+    gold_reward: int = 30
+    attribute: str = "DISCIPLINE"
+
+
+class RecoveryCoachResponse(BaseModel):
+    analysis: str
+    tactical_mindset: str
+    recovery_quests: List[RecoveryQuestItem]
+
+
+class AcceptRecoveryRequest(BaseModel):
+    recovery_quests: List[RecoveryQuestItem]
+

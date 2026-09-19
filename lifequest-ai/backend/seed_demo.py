@@ -20,22 +20,36 @@ db = get_db()
 
 try:
     # ── 1. Seed shop items ────────────────────────────────────────────────────
-    if db.items.count_documents({}) == 0:
-        shop_items = [
-            {"name": "Focus Shield",       "description": "Protects your streak for one missed day",  "rarity": "RARE",      "price": 200,  "effect": "streak_shield",   "icon": "🛡️"},
-            {"name": "Productivity Sword", "description": "+20% XP on next quest completion",          "rarity": "UNCOMMON",  "price": 150,  "effect": "xp_boost_20",     "icon": "⚔️"},
-            {"name": "XP Booster",         "description": "Double XP for 1 hour",                      "rarity": "RARE",      "price": 300,  "effect": "xp_double_1h",    "icon": "⚡"},
-            {"name": "Streak Shield",      "description": "Preserve streak through 2 missed days",     "rarity": "EPIC",      "price": 500,  "effect": "streak_shield_2", "icon": "🔥"},
-            {"name": "Cyber Theme",        "description": "Unlocks the Cyber Matrix UI theme",          "rarity": "LEGENDARY", "price": 1000, "effect": "theme_cyber",     "icon": "🎨"},
-            {"name": "Rare Avatar Frame",  "description": "Holographic avatar border",                  "rarity": "RARE",      "price": 400,  "effect": "avatar_frame",    "icon": "👤"},
-            {"name": "Achievement Badge",  "description": "Display a prestige badge on your profile",   "rarity": "UNCOMMON",  "price": 100,  "effect": "badge",           "icon": "🏅"},
-            {"name": "Gold Magnet",        "description": "+50% Gold from all quests for 24h",          "rarity": "EPIC",      "price": 600,  "effect": "gold_boost_24h",  "icon": "💰"},
-        ]
-        for item in shop_items:
+    shop_items = [
+        {"name": "Focus Shield",       "description": "Protects your streak for one missed day",  "rarity": "RARE",      "price": 200,  "effect": "streak_shield",   "icon": "🛡️", "slot": "ARMOR",  "perk_type": "streak_shield",      "perk_value": 1.0},
+        {"name": "Productivity Sword", "description": "+15% XP & +20% Boss Damage on quests",      "rarity": "UNCOMMON",  "price": 150,  "effect": "xp_boost_20",     "icon": "⚔️", "slot": "WEAPON", "perk_type": "xp_boost",           "perk_value": 0.15},
+        {"name": "XP Booster",         "description": "+25% XP bonus from all quests",            "rarity": "RARE",      "price": 300,  "effect": "xp_boost_25",     "icon": "⚡", "slot": "RELIC",  "perk_type": "xp_boost",           "perk_value": 0.25},
+        {"name": "Streak Shield",      "description": "Preserve streak through missed days",       "rarity": "EPIC",      "price": 500,  "effect": "streak_shield_2", "icon": "🔥", "slot": "ARMOR",  "perk_type": "streak_shield",      "perk_value": 2.0},
+        {"name": "Cyber Theme",        "description": "Unlocks the Cyber Matrix UI theme",          "rarity": "LEGENDARY", "price": 1000, "effect": "theme_cyber",     "icon": "🎨", "slot": "CONSUMABLE", "perk_type": "theme",          "perk_value": 0.0},
+        {"name": "Rare Avatar Frame",  "description": "Holographic avatar border",                  "rarity": "RARE",      "price": 400,  "effect": "avatar_frame",    "icon": "👤", "slot": "CONSUMABLE", "perk_type": "cosmetic",       "perk_value": 0.0},
+        {"name": "Achievement Badge",  "description": "Display a prestige badge on your profile",   "rarity": "UNCOMMON",  "price": 100,  "effect": "badge",           "icon": "🏅", "slot": "RELIC",  "perk_type": "xp_boost",           "perk_value": 0.05},
+        {"name": "Gold Magnet",        "description": "+30% Gold from all completed quests",        "rarity": "EPIC",      "price": 600,  "effect": "gold_boost_24h",  "icon": "💰", "slot": "RELIC",  "perk_type": "gold_boost",         "perk_value": 0.30},
+    ]
+
+    for item in shop_items:
+        existing_item = db.items.find_one({"name": item["name"]})
+        if not existing_item:
             item_id = get_next_sequence_value(db, "items")
-            item["id"] = item_id
-            db.items.insert_one(item)
-        print("✅ Seeded shop items")
+            item_doc = dict(item)
+            item_doc["id"] = item_id
+            db.items.insert_one(item_doc)
+        else:
+            db.items.update_one(
+                {"name": item["name"]},
+                {"$set": {
+                    "slot": item["slot"],
+                    "perk_type": item["perk_type"],
+                    "perk_value": item["perk_value"],
+                    "description": item["description"],
+                }}
+            )
+    print("✅ Seeded/Updated shop items with equipment slots and perks")
+
 
     # ── 2. Seed weekly boss ───────────────────────────────────────────────────
     if db.bosses.count_documents({}) == 0:

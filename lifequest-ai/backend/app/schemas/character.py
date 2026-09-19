@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, List, Any
 
 
 class CharacterResponse(BaseModel):
@@ -13,6 +13,10 @@ class CharacterResponse(BaseModel):
     xp_in_current_level: int
     xp_needed_for_next: int
     progress_pct: float
+    character_class: str = "WARRIOR"
+    equipped: Dict[str, Optional[int]] = {"weapon": None, "armor": None, "relic": None}
+    unlocked_achievements: List[str] = []
+    active_perks: List[str] = []
 
     class Config:
         from_attributes = True
@@ -37,6 +41,20 @@ class CharacterWithAttributes(CharacterResponse):
     attributes: Optional[AttributeResponse] = None
 
 
+class AchievementResponse(BaseModel):
+    id: str
+    title: str
+    description: str
+    icon: str
+    category: str
+    is_unlocked: bool = False
+    unlocked_at: Optional[str] = None
+
+
+class ChooseClassRequest(BaseModel):
+    character_class: str
+
+
 class XPAwardResult(BaseModel):
     old_xp: int
     new_xp: int
@@ -49,3 +67,6 @@ class XPAwardResult(BaseModel):
     new_gold: int
     attribute: Optional[str] = None
     attribute_bonus: int = 0
+    newly_unlocked_achievements: List[AchievementResponse] = []
+    perk_bonuses: Optional[Dict[str, Any]] = None
+

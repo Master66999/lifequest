@@ -76,6 +76,21 @@ export const characterService = {
     const res = await api.get('/character/');
     return res.data;
   },
+
+  async chooseClass(character_class: string): Promise<Character> {
+    const res = await api.post('/character/choose-class', { character_class });
+    return res.data;
+  },
+
+  async getClasses(): Promise<import('@/types').ClassInfo[]> {
+    const res = await api.get('/character/classes');
+    return res.data;
+  },
+
+  async getAchievements(): Promise<import('@/types').Achievement[]> {
+    const res = await api.get('/character/achievements');
+    return res.data;
+  },
 };
 
 // ── Quests ────────────────────────────────────────────────────────────────────
@@ -104,6 +119,11 @@ export const questService = {
     const res = await api.post(`/quests/${id}/complete`);
     return res.data;
   },
+
+  async toggleSubtask(questId: number, subtaskId: string): Promise<Quest> {
+    const res = await api.post(`/quests/${questId}/subtasks/${subtaskId}/toggle`);
+    return res.data;
+  },
 };
 
 // ── Shop & Inventory ──────────────────────────────────────────────────────────
@@ -123,7 +143,18 @@ export const shopService = {
     const res = await api.post('/inventory/purchase', { item_id });
     return res.data;
   },
+
+  async equip(item_id: number, slot?: string): Promise<import('@/types').EquipResponse> {
+    const res = await api.post('/inventory/equip', { item_id, slot });
+    return res.data;
+  },
+
+  async unequip(slot: string): Promise<import('@/types').EquipResponse> {
+    const res = await api.post('/inventory/unequip', { slot });
+    return res.data;
+  },
 };
+
 
 // ── Boss ──────────────────────────────────────────────────────────────────────
 
@@ -165,6 +196,22 @@ export const auraService = {
     const res = await api.get('/ai/aura-tip');
     return res.data;
   },
+
+  async deconstructQuest(questId: number): Promise<import('@/types').DeconstructQuestResponse> {
+    const res = await api.post('/ai/deconstruct-quest', { quest_id: questId });
+    return res.data;
+  },
+
+  async getRecoveryPlan(): Promise<import('@/types').RecoveryCoachResponse> {
+    const res = await api.post('/ai/recovery-coach');
+    return res.data;
+  },
+
+  async acceptRecoveryPlan(recoveryQuests: import('@/types').RecoveryQuestItem[]): Promise<{ success: boolean; quests_added: number; message: string }> {
+    const res = await api.post('/ai/accept-recovery', { recovery_quests: recoveryQuests });
+    return res.data;
+  },
 };
 
 export default api;
+

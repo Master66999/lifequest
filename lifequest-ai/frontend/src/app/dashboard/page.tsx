@@ -5,7 +5,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { characterService, questService, bossService, auraService } from '@/lib/api';
-import type { Character, Quest, Boss, QuestCompletionResult, Difficulty } from '@/types';
+import type {
+  Character,
+  Quest,
+  Boss,
+  QuestCompletionResult,
+  Difficulty,
+  Achievement,
+  Subtask,
+  RecoveryCoachResponse,
+} from '@/types';
+import { auraVoice } from '@/lib/aura-voice';
+import { soundEffects } from '@/lib/sound-effects';
+import { triggerLevelUpConfetti, triggerQuestRewardConfetti } from '@/lib/confetti';
+import CharacterAvatar from '@/components/CharacterAvatar';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import {
@@ -25,11 +38,23 @@ import {
   Loader2,
   Clock,
   ChevronRight,
+  ChevronDown,
   X,
   Sword,
   Send,
   Trash2,
   MessageSquare,
+  Award,
+  Trophy,
+  Zap,
+  Crown,
+  Volume2,
+  VolumeX,
+  Wand2,
+  ListChecks,
+  RotateCcw,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 
 /* ── Attribute Configuration (High-Contrast Clean) ── */
@@ -89,32 +114,106 @@ const DIFFICULTY_CONFIG: Record<string, { label: string; badgeClass: string }> =
   LEGENDARY: { label: 'Legendary', badgeClass: 'badge-red' },
 };
 
-/* ── Minimalist Clean Level-Up Modal ── */
-function LevelUpModal({ result, onClose }: { result: QuestCompletionResult; onClose: () => void }) {
+const CLASS_CONFIG: Record<
+  string,
+  { name: string; title: string; icon: string; bonus: string; color: string }
+> = {
+  WARRIOR: {
+    name: 'Warrior',
+    title: 'Vanguard of Grit',
+    icon: '⚔️',
+    bonus: '+25% Strength & Discipline · +20% Boss DMG',
+    color: 'from-amber-700 to-red-800',
+  },
+  MAGE: {
+    name: 'Mage',
+    title: 'Arcane Scholar',
+    icon: '🔮',
+    bonus: '+25% Intellect & Wisdom · +15% Quest XP',
+    color: 'from-indigo-700 to-purple-800',
+  },
+  ROGUE: {
+    name: 'Rogue',
+    title: 'Shadow Vanguard',
+    icon: '🗡️',
+    bonus: '+25% Focus · +30% Gold Rewards',
+    color: 'from-emerald-700 to-teal-800',
+  },
+  BARD: {
+    name: 'Bard',
+    title: 'Weaver of Inspiration',
+    icon: '🎭',
+    bonus: '+25% Creativity & Social · +10% XP & Gold',
+    color: 'from-rose-700 to-pink-800',
+  },
+};
+
+/* ── Minimalist Clean Level-Up & Rewards Modal ── */
+function LevelUpModal({
+  result,
+  characterClass,
+  level,
+  onClose,
+}: {
+  result: QuestCompletionResult;
+  characterClass?: string;
+  level?: number;
+  onClose: () => void;
+}) {
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const hasAchievements = result.newly_unlocked_achievements && result.newly_unlocked_achievements.length > 0;
+  const perkLabels = result.perk_bonuses?.active_perk_labels || [];
+
+  const handleVoiceProclamation = () => {
+    if (isSpeaking) {
+      auraVoice.stop();
+      setIsSpeaking(false);
+    } else {
+      const speechText = result.leveled_up
+        ? `Hail Champion! You have scaled your capabilities to Level ${result.new_level}! Plus ${result.xp_awarded} experience and ${result.gold_awarded} gold deposited to your war chest.`
+        : `Victory achieved, Warrior! Quest successfully credited. ${result.xp_awarded} experience points and ${result.gold_awarded} gold added to your treasury.`;
+      
+      auraVoice.speak(speechText, {
+        onStart: () => setIsSpeaking(true),
+        onEnd: () => setIsSpeaking(false),
+        onError: () => setIsSpeaking(false),
+      });
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
-      onClick={onClose}
+      onClick={() => {
+        auraVoice.stop();
+        onClose();
+      }}
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0, y: 10 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="w-full max-w-sm bg-white border border-slate-300 rounded-2xl p-6 text-center shadow-xl"
+        className="w-full max-w-sm bg-white border border-slate-300 rounded-2xl p-6 text-center shadow-xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700">
-          <CheckCircle2 size={24} />
+        {/* Dynamic Character Avatar */}
+        <div className="flex justify-center mb-2">
+          <CharacterAvatar
+            characterClass={characterClass}
+            level={result.new_level || level || 1}
+            size="md"
+            showBadges={false}
+          />
         </div>
 
         {result.leveled_up ? (
           <>
             <span className="badge badge-cyan mb-1.5 font-bold">LEVEL UP PROMOTION</span>
             <h2 className="font-extrabold text-xl text-[#090d16]">Rank Promoted</h2>
-            <div className="text-blue-700 font-mono font-extrabold text-3xl my-2">
+            <div className="text-blue-700 font-mono font-extrabold text-3xl my-1.5">
               Level {result.new_level}
             </div>
             <p className="text-xs text-slate-600">Your real-world capabilities have scaled.</p>
@@ -126,7 +225,30 @@ function LevelUpModal({ result, onClose }: { result: QuestCompletionResult; onCl
           </>
         )}
 
-        <div className="grid grid-cols-2 gap-2.5 my-5 font-mono">
+        {/* Newly Unlocked Achievements Celebration */}
+        {hasAchievements && (
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="my-3 p-3 rounded-xl bg-amber-50 border border-amber-300 text-left"
+          >
+            <div className="flex items-center gap-1.5 text-[10px] font-mono font-extrabold text-amber-800 uppercase tracking-wider mb-1">
+              <Trophy size={13} className="text-amber-600" />
+              <span>Achievement Unlocked!</span>
+            </div>
+            {result.newly_unlocked_achievements?.map((ach) => (
+              <div key={ach.id} className="flex items-center gap-2 mt-1">
+                <span className="text-xl p-1 rounded-lg bg-white border border-amber-200">{ach.icon}</span>
+                <div>
+                  <div className="font-extrabold text-xs text-slate-900">{ach.title}</div>
+                  <div className="text-[10px] text-slate-600 leading-tight">{ach.description}</div>
+                </div>
+              </div>
+            ))}
+          </motion.div>
+        )}
+
+        <div className="grid grid-cols-2 gap-2.5 my-4 font-mono">
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
             <span className="text-[10px] text-slate-600 font-bold uppercase block font-sans">
               Experience
@@ -141,13 +263,336 @@ function LevelUpModal({ result, onClose }: { result: QuestCompletionResult; onCl
           </div>
         </div>
 
-        <button onClick={onClose} className="btn btn-primary w-full py-2.5 text-xs">
-          Continue
-        </button>
+        {/* Applied Perks Indicator */}
+        {perkLabels.length > 0 && (
+          <div className="mb-4 text-left p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px]">
+            <span className="font-bold text-slate-700 block mb-1 flex items-center gap-1">
+              <Zap size={11} className="text-amber-600" /> Active Buffs Applied:
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {perkLabels.map((label, idx) => (
+                <span key={idx} className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700 font-medium">
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <button
+            onClick={handleVoiceProclamation}
+            className={`btn btn-secondary py-2.5 px-3 text-xs flex items-center justify-center gap-1.5 ${
+              isSpeaking ? 'border-blue-500 text-blue-700 bg-blue-50' : ''
+            }`}
+            title="Listen to AURA's Voice Proclamation"
+          >
+            {isSpeaking ? <VolumeX size={15} className="animate-pulse text-blue-700" /> : <Volume2 size={15} />}
+            <span>{isSpeaking ? 'Mute' : 'Voice'}</span>
+          </button>
+          <button
+            onClick={() => {
+              auraVoice.stop();
+              onClose();
+            }}
+            className="btn btn-primary flex-1 py-2.5 text-xs"
+          >
+            Continue
+          </button>
+        </div>
       </motion.div>
     </motion.div>
   );
 }
+
+/* ── Smart Failure & Recovery Protocol Modal ── */
+function RecoveryProtocolModal({
+  onClose,
+  onAccepted,
+}: {
+  onClose: () => void;
+  onAccepted: () => void;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [plan, setPlan] = useState<RecoveryCoachResponse | null>(null);
+  const [accepting, setAccepting] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  useEffect(() => {
+    auraService
+      .getRecoveryPlan()
+      .then((data) => {
+        setPlan(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const handleAccept = async () => {
+    if (!plan?.recovery_quests) return;
+    setAccepting(true);
+    try {
+      await auraService.acceptRecoveryPlan(plan.recovery_quests);
+      onAccepted();
+      onClose();
+    } catch {
+      // handled
+    } finally {
+      setAccepting(false);
+    }
+  };
+
+  const handleSpeak = () => {
+    if (!plan) return;
+    if (isSpeaking) {
+      auraVoice.stop();
+      setIsSpeaking(false);
+    } else {
+      auraVoice.speak(`${plan.analysis} Tactical maxim: ${plan.tactical_mindset}`, {
+        onStart: () => setIsSpeaking(true),
+        onEnd: () => setIsSpeaking(false),
+        onError: () => setIsSpeaking(false),
+      });
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+      onClick={() => {
+        auraVoice.stop();
+        onClose();
+      }}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 10 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="w-full max-w-lg bg-white border border-slate-300 rounded-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+          <div>
+            <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-orange-700">
+              <RotateCcw size={14} />
+              <span>TACTICAL RECOVERY PROTOCOL</span>
+            </div>
+            <h3 className="font-extrabold text-base text-[#090d16]">AURA Momentum Reboot</h3>
+          </div>
+          <button
+            onClick={() => {
+              auraVoice.stop();
+              onClose();
+            }}
+            className="p-1 text-slate-500 hover:text-slate-900 rounded-lg"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="py-16 text-center">
+            <Loader2 size={24} className="animate-spin text-blue-700 mx-auto mb-2" />
+            <p className="text-xs text-slate-600 font-semibold">AURA is assembling your turnaround protocol...</p>
+          </div>
+        ) : plan ? (
+          <div className="space-y-4 mt-3 text-xs">
+            <div className="p-3.5 rounded-xl bg-orange-50/70 border border-orange-200 text-slate-800 leading-relaxed font-medium flex items-start justify-between gap-3">
+              <div>
+                <span className="font-bold text-orange-950 font-mono text-[10px] uppercase block mb-1">
+                  Tactical Debrief:
+                </span>
+                <p>{plan.analysis}</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleSpeak}
+                className={`p-2 rounded-lg border shrink-0 transition-all ${
+                  isSpeaking
+                    ? 'bg-orange-600 text-white border-orange-700 animate-pulse'
+                    : 'bg-white border-orange-300 text-orange-800 hover:bg-orange-100'
+                }`}
+                title="Voice debrief"
+              >
+                {isSpeaking ? <VolumeX size={15} /> : <Volume2 size={15} />}
+              </button>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-900 text-white font-mono text-xs">
+              <span className="text-amber-400 font-bold block text-[10px] uppercase tracking-wider mb-0.5 font-sans">
+                Battle Maxim:
+              </span>
+              <p className="text-slate-200 italic">&ldquo;{plan.tactical_mindset}&rdquo;</p>
+            </div>
+
+            <div>
+              <h4 className="font-bold text-slate-900 text-xs mb-2">Immediate Frictionless Micro-Quests:</h4>
+              <div className="space-y-2">
+                {plan.recovery_quests.map((q, idx) => (
+                  <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-extrabold text-xs text-slate-900">{q.title}</div>
+                      <div className="text-[11px] text-slate-600 font-medium mt-0.5">{q.description}</div>
+                      <div className="flex items-center gap-2 mt-1 text-[10px] font-mono text-slate-500">
+                        <span>⏱️ {q.estimated_minutes} min</span>
+                        <span>·</span>
+                        <span className="text-blue-700 font-bold">+{q.xp_reward} XP</span>
+                        <span>·</span>
+                        <span className="text-amber-700 font-bold">+{q.gold_reward} G</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  auraVoice.stop();
+                  onClose();
+                }}
+                className="btn btn-secondary flex-1 py-2"
+              >
+                Dismiss
+              </button>
+              <button
+                type="button"
+                onClick={handleAccept}
+                disabled={accepting}
+                className="btn btn-primary flex-1 py-2 flex items-center justify-center gap-1.5"
+              >
+                {accepting ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
+                <span>Engage Recovery Protocol</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="py-8 text-center text-xs text-slate-600 font-medium">
+            Could not retrieve recovery protocol at this time.
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+}
+
+
+/* ── Character Class Selection Modal ── */
+function SelectClassModal({
+  currentClass,
+  onClose,
+  onSelected,
+}: {
+  currentClass: string;
+  onClose: () => void;
+  onSelected: (className: string) => void;
+}) {
+  const [submitting, setSubmitting] = useState<string | null>(null);
+
+  const handleSelect = async (clsKey: string) => {
+    setSubmitting(clsKey);
+    try {
+      await characterService.chooseClass(clsKey);
+      onSelected(clsKey);
+      onClose();
+    } catch {
+      // handled
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 10 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="w-full max-w-lg bg-white border border-slate-300 rounded-2xl p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+          <div>
+            <div className="flex items-center gap-1 text-xs font-mono font-bold text-amber-700">
+              <Crown size={14} />
+              <span>CHARACTER ARCHETYPE</span>
+            </div>
+            <h3 className="font-extrabold text-base text-[#090d16]">Choose Your RPG Class</h3>
+          </div>
+          <button onClick={onClose} className="p-1 text-slate-500 hover:text-slate-900 rounded-lg">
+            <X size={16} />
+          </button>
+        </div>
+
+        <p className="text-xs text-slate-600 mt-2 mb-4 font-medium">
+          Select an archetype that aligns with your real-life development style. Your class amplifies specific attribute growth and combat metrics.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {Object.entries(CLASS_CONFIG).map(([key, info]) => {
+            const isSelected = currentClass.toUpperCase() === key;
+            const isProcessing = submitting === key;
+
+            return (
+              <div
+                key={key}
+                onClick={() => !isProcessing && handleSelect(key)}
+                className={`p-4 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+                  isSelected
+                    ? 'border-blue-600 bg-blue-50/70 ring-2 ring-blue-500/20 shadow-sm'
+                    : 'border-slate-200 hover:border-slate-400 bg-white hover:bg-slate-50'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-2xl p-2 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                      {info.icon}
+                    </span>
+                    {isSelected && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-700 text-white flex items-center gap-1">
+                        <CheckCircle2 size={10} /> Active
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="font-extrabold text-sm text-[#090d16]">{info.name}</h4>
+                  <div className="text-[11px] font-mono text-slate-500 mb-2 font-semibold">
+                    {info.title}
+                  </div>
+                  <div className="text-xs text-blue-900 font-semibold leading-relaxed bg-slate-100/80 p-2 rounded-lg border border-slate-200/60">
+                    {info.bonus}
+                  </div>
+                </div>
+
+                <div className="pt-3 mt-2 border-t border-slate-200 flex justify-end">
+                  <button
+                    disabled={isProcessing}
+                    className={`btn btn-sm text-xs py-1 px-3 ${
+                      isSelected ? 'btn-secondary' : 'btn-primary'
+                    }`}
+                  >
+                    {isProcessing ? <Loader2 size={12} className="animate-spin" /> : isSelected ? 'Selected' : 'Equip Class'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 
 /* ── Clean Create Quest Modal ── */
 function CreateQuestModal({
@@ -344,10 +789,17 @@ export default function DashboardPage() {
   const [character, setCharacter] = useState<Character | null>(null);
   const [quests, setQuests] = useState<Quest[]>([]);
   const [boss, setBoss] = useState<Boss | null>(null);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [showClassModal, setShowClassModal] = useState(false);
+
   const [auraTip, setAuraTip] = useState<string>('Analyzing your combat telemetry...');
   const [auraChatMsg, setAuraChatMsg] = useState('');
   const [chatHistory, setChatHistory] = useState<AuraChatTurn[]>([]);
   const [auraLoading, setAuraLoading] = useState(false);
+  const [isSpeakingTip, setIsSpeakingTip] = useState(false);
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+  const [deconstructingId, setDeconstructingId] = useState<number | null>(null);
+  const [expandedSubtasks, setExpandedSubtasks] = useState<Record<number, boolean>>({});
 
   const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'DONE'>('ACTIVE');
   const [completingId, setCompletingId] = useState<number | null>(null);
@@ -363,14 +815,16 @@ export default function DashboardPage() {
 
   const loadDashboardData = useCallback(async () => {
     try {
-      const [charData, questList, bossData] = await Promise.all([
+      const [charData, questList, bossData, achList] = await Promise.all([
         characterService.get(),
         questService.list(),
         bossService.getCurrent(),
+        characterService.getAchievements().catch(() => []),
       ]);
       setCharacter(charData);
       setQuests(questList);
       setBoss(bossData);
+      setAchievements(achList);
     } catch {
       // handled
     } finally {
@@ -388,10 +842,62 @@ export default function DashboardPage() {
     }
   }, [isAuthenticated, loadDashboardData]);
 
+  const handleToggleSpeakTip = () => {
+    if (isSpeakingTip) {
+      auraVoice.stop();
+      setIsSpeakingTip(false);
+    } else {
+      auraVoice.speak(auraTip, {
+        onStart: () => setIsSpeakingTip(true),
+        onEnd: () => setIsSpeakingTip(false),
+        onError: () => setIsSpeakingTip(false),
+      });
+    }
+  };
+
+  const handleDeconstructQuest = async (questId: number) => {
+    setDeconstructingId(questId);
+    try {
+      const res = await auraService.deconstructQuest(questId);
+      setQuests((prev) =>
+        prev.map((q) => (q.id === questId ? { ...q, subtasks: res.subtasks } : q))
+      );
+      setExpandedSubtasks((prev) => ({ ...prev, [questId]: true }));
+    } catch {
+      // handled
+    } finally {
+      setDeconstructingId(null);
+    }
+  };
+
+  const handleToggleSubtask = async (questId: number, subtaskId: string) => {
+    try {
+      const updatedQuest = await questService.toggleSubtask(questId, subtaskId);
+      setQuests((prev) => prev.map((q) => (q.id === questId ? updatedQuest : q)));
+    } catch {
+      // handled
+    }
+  };
+
+  const toggleSubtasksExpanded = (questId: number) => {
+    setExpandedSubtasks((prev) => ({ ...prev, [questId]: !prev[questId] }));
+  };
+
   const handleCompleteQuest = async (id: number) => {
     setCompletingId(id);
     try {
       const result = await questService.complete(id);
+      if (result.leveled_up) {
+        soundEffects.playLevelUpFanfare();
+        triggerLevelUpConfetti();
+      } else {
+        soundEffects.playQuestComplete();
+        setTimeout(() => soundEffects.playCoinClink(), 160);
+        triggerQuestRewardConfetti();
+      }
+      if (boss) {
+        setTimeout(() => soundEffects.playBossHit(), 320);
+      }
       setCompletionResult(result);
       await loadDashboardData();
     } catch {
@@ -400,6 +906,7 @@ export default function DashboardPage() {
       setCompletingId(null);
     }
   };
+
 
   const handleDeleteQuest = async (id: number) => {
     try {
@@ -449,6 +956,9 @@ export default function DashboardPage() {
 
   if (!character) return null;
 
+  const currentClassKey = (character.character_class || 'WARRIOR').toUpperCase();
+  const classInfo = CLASS_CONFIG[currentClassKey] || CLASS_CONFIG.WARRIOR;
+
   const filteredQuests = quests.filter((q) => {
     if (filter === 'ACTIVE') return q.status === 'AVAILABLE' || q.status === 'IN_PROGRESS';
     if (filter === 'DONE') return q.status === 'COMPLETED';
@@ -459,6 +969,7 @@ export default function DashboardPage() {
     (q) => q.status === 'AVAILABLE' || q.status === 'IN_PROGRESS'
   ).length;
   const doneCount = quests.filter((q) => q.status === 'COMPLETED').length;
+  const unlockedAchCount = achievements.filter((a) => a.is_unlocked).length;
 
   return (
     <div className="min-h-screen bg-[#f1f5f9] text-[#090d16] flex flex-col">
@@ -469,23 +980,43 @@ export default function DashboardPage() {
         {/* ── Top Executive Banner Card ── */}
         <div className="card p-4 sm:p-6 mb-5 sm:mb-6 bg-white border border-slate-300 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex flex-wrap items-center gap-2 mb-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-600" />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                Active Session · Productivity Hub
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 font-mono">
+                Active Session · Hero Headquarters
               </span>
+
+              {/* Character Class Badge */}
+              <button
+                onClick={() => setShowClassModal(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-blue-900 text-xs font-bold hover:border-blue-400 transition-all shadow-2xs"
+                title="Click to Change Class"
+              >
+                <span>{classInfo.icon}</span>
+                <span>{classInfo.name}</span>
+                <span className="text-[10px] text-blue-600 font-normal">({classInfo.title})</span>
+                <span className="text-[10px] text-blue-600 underline ml-0.5">Switch</span>
+              </button>
             </div>
+
             <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#090d16]">
-              Welcome back, <span className="text-blue-700">Warrior</span>
+              Welcome back, <span className="text-blue-700">{classInfo.name}</span>
             </h1>
             <p className="text-xs text-slate-600 mt-1 font-medium">
               Level {character.level} · {character.xp_in_current_level.toLocaleString()} /{' '}
               {character.xp_needed_for_next.toLocaleString()} XP ({character.progress_pct}% to Level{' '}
-              {character.level + 1})
+              {character.level + 1}) · <span className="text-blue-900 font-semibold">{classInfo.bonus}</span>
             </p>
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Link
+              href="/shop"
+              className="btn btn-secondary text-xs flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
+            >
+              <Shield size={13} className="text-amber-700" />
+              <span>Loadout</span>
+            </Link>
             <Link
               href="/campaign"
               className="btn btn-secondary text-xs flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
@@ -511,9 +1042,10 @@ export default function DashboardPage() {
             <div className="card p-5 bg-white border border-slate-300">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                    Hero Dossier
-                  </span>
+                  <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">
+                    <span>{classInfo.icon}</span>
+                    <span>{classInfo.name} Dossier</span>
+                  </div>
                   <h2 className="font-extrabold text-lg text-[#090d16] mt-0.5">
                     Level {character.level} Champion
                   </h2>
@@ -527,6 +1059,20 @@ export default function DashboardPage() {
                       {character.progress_pct}%
                     </span>
                   </div>
+                </div>
+              </div>
+
+              {/* Dynamic 2D Character Avatar Showcase */}
+              <div className="py-2.5 flex flex-col items-center justify-center bg-slate-50/70 rounded-xl border border-slate-200/80 mb-3.5">
+                <CharacterAvatar
+                  characterClass={character.character_class}
+                  level={character.level}
+                  equipped={character.equipped}
+                  size="md"
+                  showBadges={true}
+                />
+                <div className="text-[10px] font-mono text-slate-500 font-semibold mt-1">
+                  {classInfo.name} · {classInfo.title}
                 </div>
               </div>
 
@@ -569,6 +1115,48 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+
+            {/* Achievements & Trophies Shelf */}
+            <div className="card p-4 sm:p-5 bg-white border border-slate-300">
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200">
+                <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-slate-900 font-mono">
+                  <Trophy size={14} className="text-amber-600" />
+                  <span>PRESTIGE TROPHIES</span>
+                </div>
+                <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  {unlockedAchCount} / {achievements.length} Unlocked
+                </span>
+              </div>
+
+              {/* Achievement Badges Grid */}
+              <div className="grid grid-cols-4 gap-2">
+                {achievements.map((ach) => (
+                  <div
+                    key={ach.id}
+                    className={`group relative p-2 rounded-xl flex flex-col items-center justify-center text-center transition-all ${
+                      ach.is_unlocked
+                        ? 'bg-amber-50/80 border border-amber-300 shadow-2xs'
+                        : 'bg-slate-50 border border-slate-200 opacity-40 grayscale'
+                    }`}
+                  >
+                    <span className="text-xl mb-1">{ach.icon}</span>
+                    <span className="text-[9px] font-bold text-slate-800 truncate w-full">
+                      {ach.title}
+                    </span>
+
+                    {/* Popover tooltip */}
+                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block z-30 w-36 p-2 rounded-lg bg-slate-900 text-white text-[10px] leading-tight shadow-xl pointer-events-none">
+                      <div className="font-bold text-amber-300">{ach.title}</div>
+                      <div className="text-slate-300 mt-0.5">{ach.description}</div>
+                      <div className="text-[9px] font-mono mt-1 text-slate-400">
+                        {ach.is_unlocked ? '✓ Unlocked' : '🔒 Locked'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
 
             {/* Attributes Card */}
             <div className="card p-4 sm:p-5 bg-white border border-slate-300">
@@ -670,14 +1258,42 @@ export default function DashboardPage() {
                       </span>
                     </div>
 
-                    {chatHistory.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <button
-                        onClick={() => setChatHistory([])}
-                        className="text-[10px] font-bold text-slate-500 hover:text-slate-800 transition-colors"
+                        type="button"
+                        onClick={handleToggleSpeakTip}
+                        className={`p-1.5 rounded-md border text-xs font-semibold flex items-center gap-1 transition-all ${
+                          isSpeakingTip
+                            ? 'bg-blue-600 text-white border-blue-700 animate-pulse'
+                            : 'bg-white border-blue-200 text-blue-800 hover:bg-blue-50'
+                        }`}
+                        title={isSpeakingTip ? 'Stop speech' : 'Read tip with AURA voice'}
                       >
-                        Clear Thread
+                        {isSpeakingTip ? <VolumeX size={13} /> : <Volume2 size={13} />}
+                        <span className="text-[10px] font-mono hidden sm:inline">
+                          {isSpeakingTip ? 'Stop Voice' : 'AURA Voice'}
+                        </span>
                       </button>
-                    )}
+
+                      <button
+                        type="button"
+                        onClick={() => setShowRecoveryModal(true)}
+                        className="px-2 py-1 rounded-md border border-orange-200 bg-orange-50/70 hover:bg-orange-100 text-orange-800 text-[10px] font-mono font-bold flex items-center gap-1 transition-all shadow-2xs"
+                        title="Engage AURA Failure Recovery Protocol"
+                      >
+                        <RotateCcw size={11} />
+                        <span>Recovery Protocol</span>
+                      </button>
+
+                      {chatHistory.length > 0 && (
+                        <button
+                          onClick={() => setChatHistory([])}
+                          className="text-[10px] font-bold text-slate-500 hover:text-slate-800 transition-colors"
+                        >
+                          Clear Thread
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <p className="text-xs text-slate-800 mt-1 leading-relaxed italic font-medium">
@@ -825,7 +1441,7 @@ export default function DashboardPage() {
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
-                          className={`group p-3 sm:p-3.5 flex items-center gap-2.5 sm:gap-3.5 transition-colors ${
+                          className={`group p-3 sm:p-3.5 flex items-start gap-2.5 sm:gap-3.5 transition-colors ${
                             isCompleted ? 'bg-slate-50/60 opacity-60' : 'hover:bg-slate-50'
                           }`}
                         >
@@ -833,7 +1449,7 @@ export default function DashboardPage() {
                           <button
                             onClick={() => !isCompleted && handleCompleteQuest(quest.id)}
                             disabled={isCompleted || isCompleting}
-                            className="text-slate-400 hover:text-blue-700 transition-colors shrink-0 p-1 -m-1"
+                            className="text-slate-400 hover:text-blue-700 transition-colors shrink-0 p-1 -m-1 mt-0.5"
                             title={isCompleted ? 'Completed' : 'Mark Completed'}
                           >
                             {isCompleting ? (
@@ -873,6 +1489,76 @@ export default function DashboardPage() {
                               <p className="text-[11px] text-slate-600 truncate mt-0.5 font-medium">
                                 {quest.description}
                               </p>
+                            )}
+
+                            {/* Phase 2: AURA Deconstruct Button (when quest has no subtasks yet) */}
+                            {!isCompleted && (!quest.subtasks || quest.subtasks.length === 0) && (
+                              <div className="mt-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeconstructQuest(quest.id)}
+                                  disabled={deconstructingId === quest.id}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 transition-all shadow-2xs"
+                                  title="Deconstruct intimidating quest into 3-5 bite-sized steps with AURA"
+                                >
+                                  {deconstructingId === quest.id ? (
+                                    <Loader2 size={11} className="animate-spin text-indigo-700" />
+                                  ) : (
+                                    <Wand2 size={11} />
+                                  )}
+                                  <span>{deconstructingId === quest.id ? 'Deconstructing with AURA...' : 'Deconstruct with AURA'}</span>
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Phase 2: Expandable Subtasks Checklist */}
+                            {quest.subtasks && quest.subtasks.length > 0 && (
+                              <div className="mt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleSubtasksExpanded(quest.id)}
+                                  className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50/70 border border-indigo-200/80 px-2 py-0.5 rounded"
+                                >
+                                  <ListChecks size={12} />
+                                  <span>
+                                    Micro-Tasks ({quest.subtasks.filter((s) => s.completed).length}/{quest.subtasks.length})
+                                  </span>
+                                  <ChevronDown
+                                    size={12}
+                                    className={`transition-transform duration-200 ${
+                                      expandedSubtasks[quest.id] ? 'rotate-180' : ''
+                                    }`}
+                                  />
+                                </button>
+
+                                {expandedSubtasks[quest.id] && (
+                                  <div className="mt-2 pl-2 border-l-2 border-indigo-200 space-y-1">
+                                    {quest.subtasks.map((st) => (
+                                      <div
+                                        key={st.id}
+                                        onClick={() => !isCompleted && handleToggleSubtask(quest.id, st.id)}
+                                        className={`flex items-center gap-2 text-[11px] p-1.5 rounded cursor-pointer transition-colors ${
+                                          st.completed
+                                            ? 'text-slate-400 line-through bg-slate-50'
+                                            : 'text-slate-800 hover:bg-slate-100'
+                                        }`}
+                                      >
+                                        {st.completed ? (
+                                          <CheckSquare size={13} className="text-emerald-600 shrink-0" />
+                                        ) : (
+                                          <Square size={13} className="text-slate-400 shrink-0" />
+                                        )}
+                                        <span className="truncate">{st.title}</span>
+                                        {st.estimated_minutes && (
+                                          <span className="text-[9px] font-mono text-slate-400 ml-auto shrink-0">
+                                            ⏱️ {st.estimated_minutes}m
+                                          </span>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </div>
 
@@ -932,6 +1618,8 @@ export default function DashboardPage() {
         {completionResult && (
           <LevelUpModal
             result={completionResult}
+            characterClass={character.character_class}
+            level={completionResult.new_level || character.level}
             onClose={() => setCompletionResult(null)}
           />
         )}
@@ -946,6 +1634,31 @@ export default function DashboardPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Select Character Class Modal */}
+      <AnimatePresence>
+        {showClassModal && (
+          <SelectClassModal
+            currentClass={character.character_class || 'WARRIOR'}
+            onClose={() => setShowClassModal(false)}
+            onSelected={(newClass) => {
+              setCharacter((prev) => (prev ? { ...prev, character_class: newClass } : null));
+              loadDashboardData();
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Recovery Protocol Modal */}
+      <AnimatePresence>
+        {showRecoveryModal && (
+          <RecoveryProtocolModal
+            onClose={() => setShowRecoveryModal(false)}
+            onAccepted={loadDashboardData}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
+
